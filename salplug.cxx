@@ -42,7 +42,37 @@ extern "C" {
 typedef SalInstance*(*salFactoryProc)( oslModule pModule);
 }
 
-static oslModule pCloseModule = NULL;
+class OslModuleWrapper 
+{
+public:
+    OslModuleWrapper(): pCloseModule(NULL) {};
+    OslModuleWrapper(oslModule pModule);
+    ~OslModuleWrapper();
+    void SetNullCloseModule() {pCloseModule=NULL;}
+    void SetModule(oslModule pModule);
+private:
+    oslModule pCloseModule;
+};
+
+OslModuleWrapper::OslModuleWrapper(oslModule pModule):
+     pCloseModule(pModule)
+{
+}
+
+OslModuleWrapper::~OslModuleWrapper()
+{
+    if( pCloseModule )
+        osl_unloadModule( pCloseModule );
+}
+
+void OslModuleWrapper::SetModule(oslModule pModule)
+{
+    if (pModule)
+        osl_unloadModule( pCloseModule );        
+    pCloseModule = pModule;
+}
+
+static OslModuleWrapper wrapper __attribute__ ((init_priority (200)));
 
 enum {
     DESKTOP_NONE = 0,
@@ -82,8 +112,7 @@ static SalInstance* tryInstance( const OUString& rModuleBase )
 #endif
             if( pInst )
             {
-                pCloseModule = aMod;
-
+                wrapper.SetModule(aMod);
                 /*
                  * Recent GTK+ versions load their modules with RTLD_LOCAL, so we can 
                  * not access the 'gnome_accessibility_module_shutdown' anymore. 
@@ -92,7 +121,7 @@ static SalInstance* tryInstance( const OUString& rModuleBase )
                  */
                 if( rModuleBase.equalsAscii("gtk") )
                 {
-                    pCloseModule = NULL;
+                    wrapper.SetNullCloseModule();
                 }
                 /*
                  * #i109007# KDE3 seems to have the same problem; an atexit cleanup
@@ -100,7 +129,7 @@ static SalInstance* tryInstance( const OUString& rModuleBase )
                  */
                 else if( rModuleBase.equalsAscii("kde") )
                 {
-                    pCloseModule = NULL;
+                    wrapper.SetNullCloseModule();
                 }
                 
                 GetSalData()->m_pPlugin = aMod;
@@ -251,8 +280,7 @@ void DestroySalInstance( SalInstance *pInst )
     pInst->ReleaseYieldMutex();
 
 	delete pInst;
-    if( pCloseModule )
-        osl_unloadModule( pCloseModule );
+
 }
 
 void InitSalData()
