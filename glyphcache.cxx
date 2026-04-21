@@ -129,6 +129,7 @@ bool GlyphCache::IFSD_Equal::operator()( const ImplFontSelectData& rA, const Imp
 
     // compare with the requested metrics
     if( (rA.mnHeight         != rB.mnHeight)
+    ||  (rA.mnWidth          != rB.mnWidth)
     ||  (rA.mnOrientation    != rB.mnOrientation)
     ||  (rA.mbVertical       != rB.mbVertical)
     ||  (rA.mbNonAntialiased != rB.mbNonAntialiased) )
@@ -140,10 +141,10 @@ bool GlyphCache::IFSD_Equal::operator()( const ImplFontSelectData& rA, const Imp
 
 	// NOTE: ignoring meFamily deliberately
 
-    // compare with the requested width, allow default width
-    if( (rA.mnWidth != rB.mnWidth)
-    && ((rA.mnHeight != rB.mnWidth) || (rA.mnWidth != 0)) )
-        return false;
+    // // compare with the requested width, allow default width
+    // if( (rA.mnWidth != rB.mnWidth)
+    // && ((rA.mnHeight != rB.mnWidth) || (rA.mnWidth != 0)) )
+    //     return false;
 #ifdef ENABLE_GRAPHITE
    if (rA.meLanguage != rB.meLanguage)
         return false;
@@ -234,6 +235,9 @@ ServerFont* GlyphCache::CacheFont( const ImplFontSelectData& rFontSelData )
 
     // the FontList's key mpFontData member is reinterpreted as font id 
     ImplFontSelectData aFontSelData = rFontSelData;
+    //create only one object for mnWidth = 0 and mnWidth==mnHeight
+    if (aFontSelData.mnWidth == 0)
+        aFontSelData.mnWidth = aFontSelData.mnHeight;
     aFontSelData.mpFontData = reinterpret_cast<ImplFontData*>( nFontId ); 
     FontList::iterator it = maFontList.find( aFontSelData );
     if( it != maFontList.end() )
